@@ -3,265 +3,278 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Image Classifier (Every 3 Mins)</title>
-    <!-- นำเข้า Tailwind CSS v4 สำหรับการดีไซน์ UI -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- นำเข้า Google Font เพื่อความสวยงาม -->
+    <title>Teachable Machine AI Dashboard</title>
+    <!-- นำเข้า Tailwind CSS สำหรับการออกแบบที่สวยงาม -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- นำเข้า Google Fonts (Prompt) เพื่อความน่าอ่าน -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
         body {
-            font-family: 'Plus Jakarta Sans', 'Sarabun', sans-serif;
+            font-family: 'Prompt', sans-serif;
         }
-        /* ปรับแต่งสไตล์ Canvas ของกล้องที่ถูกสร้างขึ้นจาก Library */
+        /* ปรับแต่งการแสดงผลของกล้องเว็บแคมให้โค้งมนและเต็มกรอบ */
         #webcam-container canvas {
-            border-radius: 1rem;
             width: 100% !important;
             height: auto !important;
-            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
 
-    <!-- Header Section -->
-    <header class="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <!-- Header Panel -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur">
+        <div class="max-w-7xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
-                <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
-                <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Teachable Machine Smart Scanner
+                <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                <h1 class="text-xl font-semibold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                    Teachable Machine Image Model
                 </h1>
             </div>
-            <div id="last-updated" class="text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
-                สถานะ: รอการเริ่มต้นระบบ
-            </div>
+            <!-- ปุ่มกด Start ที่ดีไซน์ให้โดดเด่น -->
+            <button type="button" id="start-btn" onclick="init()" class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/20 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                เริ่มทำงานระบบตรวจจับ
+            </button>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="max-w-6xl w-full mx-auto px-4 py-8 flex-grow flex items-center">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
-            
-            <!-- ฝั่งซ้าย: กล้องและการควบคุม (6 Columns) -->
-            <div class="lg:col-span-5 flex flex-col gap-6">
-                <!-- การ์ดกล้อง Webcam -->
-                <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl relative overflow-hidden group">
-                    <div class="absolute top-3 left-3 z-10 bg-slate-950/80 text-xs px-2.5 py-1 rounded-md text-slate-300 font-medium backdrop-blur-sm border border-slate-800">
-                        LIVE WEBCAM
-                    </div>
-                    <div id="webcam-container" class="w-full aspect-square bg-slate-950 rounded-xl flex items-center justify-center border border-dashed border-slate-800 text-slate-500">
-                        <!-- แสดงไอคอนรอเปิดกล้อง -->
-                        <div id="webcam-placeholder" class="text-center p-6">
-                            <svg class="w-12 h-12 mx-auto mb-3 text-slate-600 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                            </svg>
-                            <p class="text-sm font-medium">กดปุ่มด้านล่างเพื่อเปิดใช้งานกล้อง</p>
-                        </div>
-                    </div>
+    <!-- Main Dashboard -->
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- ฝั่งซ้าย: กล้องเว็บแคม และ ตัวนับเวลา 3 นาที -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center relative overflow-hidden group">
+                <div class="absolute top-4 left-4 z-10 bg-slate-950/80 backdrop-blur text-xs px-3 py-1 rounded-full text-slate-400 border border-slate-800">
+                    Live Camera Feed
                 </div>
-
-                <!-- การ์ดควบคุมและตัวนับเวลา -->
-                <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl flex flex-col gap-5">
-                    <button type="button" id="start-btn" onclick="init()" class="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 text-base">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <!-- กล่องใส่เว็บแคม -->
+                <div id="webcam-container" class="w-full aspect-square bg-slate-950 rounded-xl flex items-center justify-center border border-dashed border-slate-800 text-slate-500 text-sm">
+                    <div class="text-center p-6" id="placeholder-text">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
-                        เริ่มการทำงานระบบ
-                    </button>
-
-                    <!-- ส่วนแสดงผลการนับเวลาถอยหลัง 3 นาที -->
-                    <div id="timer-card" class="hidden border border-slate-800 bg-slate-950/50 rounded-xl p-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs text-slate-400 font-medium tracking-wider">วิเคราะห์ภาพรอบถัดไปในอีก</span>
-                            <span id="timer text-right" class="text-2xl font-bold font-mono text-purple-400" id="timer-text">03:00</span>
-                        </div>
-                        <!-- Progress Bar ของตัวนับเวลา -->
-                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                            <div id="timer-progress" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
-                        </div>
+                        กรุณากดปุ่มเพื่อเปิดกล้อง
                     </div>
                 </div>
             </div>
 
-            <!-- ฝั่งขวา: ผลลัพธ์การวิเคราะห์ (7 Columns) -->
-            <div class="lg:col-span-7 flex flex-col">
-                <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl flex-grow flex flex-col">
-                    <h2 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            <!-- การทำงานทุกๆ 3 นาที (Timer Widget) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <h3 class="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    กำหนดการทำงานรอบถัดไป (ทุกๆ 3 นาที)
+                </h3>
+                <div class="flex items-center justify-between bg-slate-950 rounded-xl p-4 border border-slate-800">
+                    <div>
+                        <span id="countdown-timer" class="text-3xl font-bold font-mono text-cyan-400">03:00</span>
+                        <p class="text-xs text-slate-500 mt-1">ระบบจะบันทึกผลการวิเคราะห์อัตโนมัติ</p>
+                    </div>
+                    <div class="h-10 w-10 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 animate-spin" style="animation-duration: 3s;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.213 15M22 18v5h-5" />
                         </svg>
-                        ผลลัพธ์การจำแนกข้อมูล (AI Prediction)
-                    </h2>
-                    
-                    <!-- Container สำหรับใส่ความมั่นใจของแต่ละ Class -->
-                    <div id="label-container" class="flex-grow flex flex-col justify-center gap-4 py-4 text-slate-400 text-center">
-                        <div class="text-sm border border-dashed border-slate-800 rounded-xl p-8 bg-slate-950/30">
-                            ยังไม่มีข้อมูล... กรุณากดปุ่ม "เริ่มการทำงานระบบ" เพื่อสั่งประมวลผล
-                        </div>
                     </div>
                 </div>
             </div>
+        </section>
 
-        </div>
+        <!-- ฝั่งขวา: ผลการวิเคราะห์ปัจจุบันแบบ Real-time และ ประวัติ Log -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            <!-- ส่วนแสดงผลแบบ Progress Bar -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <h2 class="text-base font-medium text-slate-200 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" />
+                    </svg>
+                    ผลการวิเคราะห์สถานะปัจจุบัน (Real-time Analysis)
+                </h2>
+                <!-- ใช้ JavaScript ในการเติม UI แถบความคืบหน้าเข้าไปที่นี่ -->
+                <div id="label-container" class="space-y-4">
+                    <div class="text-sm text-slate-500 text-center py-6">รอการเปิดใช้งานระบบเพื่อวิเคราะห์คลาสของภาพ...</div>
+                </div>
+            </div>
+
+            <!-- ส่วนบันทึกประวัติทุกๆ 3 นาที -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex-grow flex flex-col">
+                <h2 class="text-base font-medium text-slate-200 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    ประวัติการบันทึกข้อมูล (Every 3-Min Logs)
+                </h2>
+                <div class="flex-grow bg-slate-950 rounded-xl p-4 border border-slate-800 overflow-y-auto max-h-[220px]" id="log-container">
+                    <div class="text-slate-600 text-xs text-center py-8" id="empty-log-text">ยังไม่มีประวัติการบันทึกข้อมูลในขณะนี้</div>
+                    <ul id="log-list" class="space-y-2 text-sm hidden"></ul>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- Footer -->
-    <footer class="py-4 text-center text-xs text-slate-600 border-t border-slate-900 bg-slate-950">
-        Powered by TensorFlow.js & Teachable Machine • UI ดีไซน์ระดับผู้เชี่ยวชาญ
+    <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-600">
+        AI Monitoring System &bull; พัฒนาโดยผู้เชี่ยวชาญด้วยความใส่ใจ
     </footer>
 
-    <!-- Scripts โหลด Library จาก Source ต้นฉบับ -->
+    <!-- TensorFlow และ Teachable Machine Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     
     <script type="text/javascript">
-        // ลิงก์โมเดล Teachable Machine ของคุณ
         const URL = "https://teachablemachine.withgoogle.com/models/Llyzgf-Ac/";
 
         let model, webcam, labelContainer, maxPredictions;
-        let countdownInterval;
-        const TOTAL_SECONDS = 3 * 60; // ตั้งค่าเวลาไว้ที่ 3 นาที (180 วินาที)
-        let timeLeft = TOTAL_SECONDS;
+        let timeLeft = 180; // ตั้งเวลา 3 นาที (180 วินาที)
+        let timerInterval;
+        let latestPredictionData = []; // เก็บผลลัพธ์ล่าสุดเพื่อใช้บันทึกตอนครบ 3 นาที
 
-        // ฟังก์ชันเริ่มต้นโหลดโมเดลและเปิดกล้อง
+        // เริ่มโหลด Model และ เปิดเว็บแคม
         async function init() {
-            // ปิดการใช้งานปุ่มสแกน เพื่อไม่ให้กดซ้ำได้
-            const startBtn = document.getElementById("start-btn");
-            startBtn.disabled = true;
-            startBtn.innerHTML = `
-                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                กำลังโหลดระบบ AI...
-            `;
-            startBtn.classList.remove("from-indigo-600", "to-purple-600");
-            startBtn.classList.add("from-slate-700", "to-slate-800", "cursor-not-allowed");
+            // ซ่อนปุ่มหรือปิดความสามารถหลังกดเริ่มเพื่อป้องกันปุ่มซ้ำ
+            document.getElementById("start-btn").disabled = true;
+            document.getElementById("start-btn").className = "px-6 py-2.5 bg-slate-800 text-slate-500 font-medium rounded-xl flex items-center gap-2 cursor-not-allowed";
+            document.getElementById("placeholder-text").classList.add("hidden");
 
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
 
-            try {
-                // โหลดโครงข่ายประสาทเทียมและข้อมูล Metadata
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
 
-                // การตั้งค่าระบบกล้อง Webcam
-                const flip = true; 
-                webcam = new tmImage.Webcam(450, 450, flip); // ปรับขนาดให้ภาพคมชัดขึ้นบน UI
-                await webcam.setup(); 
-                await webcam.play();
-                window.requestAnimationFrame(loop);
+            const flip = true; 
+            webcam = new tmImage.Webcam(400, 400, flip); // ปรับขนาดภาพภายในให้ใหญ่ขึ้นเล็กน้อยเพื่อความละเอียด
+            await webcam.setup(); 
+            await webcam.play();
+            window.requestAnimationFrame(loop);
 
-                // เคลียร์พื้นที่ Placeholder ของกล้องแล้วนำ Canvas ตัวจริงใส่เข้าไป
-                const webcamContainer = document.getElementById("webcam-container");
-                webcamContainer.innerHTML = "";
-                webcamContainer.appendChild(webcam.canvas);
-
-                // สร้างโครงสร้างแถบผลลัพธ์การทำนายให้สวยงามรอไว้
-                labelContainer = document.getElementById("label-container");
-                labelContainer.innerHTML = ""; // ล้างข้อความว่างออก
-                labelContainer.classList.remove("text-center", "justify-center");
-
-                for (let i = 0; i < maxPredictions; i++) {
-                    const row = document.createElement("div");
-                    row.className = "bg-slate-900 border border-slate-800/60 p-4 rounded-xl shadow-sm transition-all duration-300";
-                    row.innerHTML = `
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="font-semibold text-slate-200 text-sm tracking-wide class-name">กำลังประมวลผล...</span>
-                            <span class="text-sm font-bold text-indigo-400 font-mono class-prob">0.0%</span>
-                        </div>
-                        <div class="w-full bg-slate-950 rounded-full h-3 border border-slate-800 p-[2px]">
-                            <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full class-bar transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                    `;
-                    labelContainer.appendChild(row);
-                }
-
-                // สั่งทำนายครั้งแรกทันทีเมื่อโหลดเสร็จ โดยไม่ต้องรอให้ครบ 3 นาทีแรก
-                await predict();
-                
-                // เริ่มระบบนับเวลาถอยหลัง 3 นาที
-                document.getElementById("timer-card").classList.remove("hidden");
-                startCountdown();
-
-            } catch (error) {
-                console.error("Initialization failed:", error);
-                alert("เกิดข้อผิดพลาดในการเปิดใช้งานกล้องหรือโหลดโมเดล กรุณาตรวจสอบสิทธิ์การเข้าถึงกล้องของคุณ");
-                startBtn.disabled = false;
-                startBtn.innerText = "เริ่มการทำงานระบบ";
+            // แสดงหน้าต่างเว็บแคมลงบนดีไซน์ใหม่
+            document.getElementById("webcam-container").innerHTML = "";
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            
+            // ล้างหน้าดีไซน์ผลลัพธ์เริ่มต้น และเตรียมโครงสร้างแถบความคืบหน้า (Progress Bar)
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = ""; 
+            
+            for (let i = 0; i < maxPredictions; i++) {
+                let classCard = document.createElement("div");
+                classCard.className = "bg-slate-950/60 p-3 rounded-xl border border-slate-800/60";
+                classCard.innerHTML = `
+                    <div class="flex justify-between items-center mb-1.5 text-sm">
+                        <span class="font-medium text-slate-300 class-name">-</span>
+                        <span class="font-mono text-indigo-400 font-semibold class-percent">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-gradient-to-r from-indigo-500 to-cyan-500 h-2.5 rounded-full transition-all duration-100 class-bar" style="width: 0%"></div>
+                    </div>
+                `;
+                labelContainer.appendChild(classCard);
             }
+
+            // เริ่มระเบิดเวลาถอยหลัง 3 นาที
+            startCountdown();
         }
 
-        // วงรอบการอัปเดตหน้าจอกล้องเพื่อให้ภาพเคลื่อนไหวอย่างสมูท (Frame Update Only)
-        function loop() {
+        async function loop() {
             webcam.update(); 
+            await predict();
             window.requestAnimationFrame(loop);
         }
 
-        // ฟังก์ชันคำนวณและวิเคราะห์ภาพถ่ายจากกล้องส่งให้ AI ประมวลผล
+        // ประมวลผลภาพจากเว็บแคมแบบ Real-time
         async function predict() {
-            if (!model || !webcam) return;
-            
             const prediction = await model.predict(webcam.canvas);
-            
-            // อัปเดตข้อมูลลงสู่ UI Components ที่สร้างไว้
-            for (let i = 0; i < maxPredictions; i++) {
-                const classNode = labelContainer.childNodes[i];
-                const name = prediction[i].className;
-                const probabilityPercentage = (prediction[i].probability * 100).toFixed(1);
-                
-                // ใส่ข้อมูลชื่อและเปอร์เซ็นต์ความแม่นยำ
-                classNode.querySelector(".class-name").innerText = name;
-                classNode.querySelector(".class-prob").innerText = probabilityPercentage + "%";
-                // ขยายแถบ Progress Bar ตามค่าความน่าจะเป็น
-                classNode.querySelector(".class-bar").style.width = probabilityPercentage + "%";
-            }
+            latestPredictionData = prediction; // อัปเดตข้อมูลเก็บไว้ใช้ในลูป 3 นาที
 
-            // บันทึกเวลาอัปเดตล่าสุดไว้บน Header สำหรับตรวจสอบประวัติการทำงาน
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            document.getElementById("last-updated").innerText = `อัปเดตข้อมูลล่าสุดเมื่อ: ${timeString} น.`;
-            document.getElementById("last-updated").classList.add("bg-emerald-950/50", "text-emerald-400", "border-emerald-800/50");
+            for (let i = 0; i < maxPredictions; i++) {
+                const className = prediction[i].className;
+                const probability = prediction[i].probability;
+                const percentString = (probability * 100).toFixed(0) + "%";
+
+                // อัปเดตค่าไปยังหน้าจอ Progress Bar ที่เราออกแบบไว้
+                let card = labelContainer.childNodes[i];
+                card.querySelector(".class-name").innerText = className;
+                card.querySelector(".class-percent").innerText = percentString;
+                card.querySelector(".class-bar").style.width = percentString;
+            }
         }
 
-        // ฟังก์ชันจัดการระบบนับเวลาถอยหลัง (Countdown) ทุกๆ 3 นาที
+        // ระบบจับเวลานับถอยหลังและการทำงานทุกๆ 3 นาที
         function startCountdown() {
-            if (countdownInterval) clearInterval(countdownInterval);
+            const timerDisplay = document.getElementById("countdown-timer");
             
-            timeLeft = TOTAL_SECONDS;
-            updateTimerUI();
-
-            countdownInterval = setInterval(async () => {
+            timerInterval = setInterval(() => {
                 timeLeft--;
                 
-                if (timeLeft < 0) {
-                    // เมื่อหมดเวลาครบ 3 นาที ให้สั่ง AI ประมวลผลภาพใหม่
-                    timeLeft = TOTAL_SECONDS; // รีเซ็ตเวลากลับไปที่ 3 นาทีใหม่
-                    await predict();
-                }
+                // คำนวณ นาที : วินาที
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
                 
-                updateTimerUI();
-            }, 1000); // ทำงานทุกๆ 1 วินาทีเพื่อลดเวลาลงเรื่อยๆ
+                // ปรับฟอร์แมตเลขหลักเดียวให้มีเลข 0 นำหน้า
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+                
+                timerDisplay.innerText = `${minutes}:${seconds}`;
+
+                // หากเวลาหมด (ครบ 3 นาที)
+                if (timeLeft <= 0) {
+                    timeLeft = 180; // รีเซ็ตเวลากลับไปเป็น 3 นาทีใหม่
+                    executePeriodicTask(); // สั่งให้ทำงานฟังก์ชันพิเศษ
+                }
+            }, 1000);
         }
 
-        // ฟังก์ชันปรับปรุงการแสดงผลตัวนับเวลาบนหน้าจอ
-        function updateTimerUI() {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
+        // ฟังก์ชันทำงานอัตโนมัติ "ทุกๆ 3 นาที"
+        function executePeriodicTask() {
+            if (latestPredictionData.length === 0) return;
+
+            // ค้นหาคลาสที่มีความเป็นไปได้สูงที่สุด ณ วินาทีนั้น (Highest Probability)
+            let highest = latestPredictionData.reduce((prev, current) => (prev.probability > current.probability) ? prev : current);
             
-            // แปลงรูปแบบการแสดงผลตัวเลขหลักเดียวให้มีเลข 0 นำหน้าเสมอ เช่น 03:00
-            const displayStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            document.getElementById("timer-text").innerText = displayStr;
+            // ดึงเวลาปัจจุบันมาทำ Timestamp
+            const now = new Date();
+            const timeStamp = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            // ดึง Element บันทึก Log ออกมาแสดงผล
+            const emptyText = document.getElementById("empty-log-text");
+            const logList = document.getElementById("log-list");
             
-            // ปรับแต่งความยาวของแถบสถานะตามเวลาที่เหลืออยู่จริงแบบ Real-time
-            const percentage = (timeLeft / TOTAL_SECONDS) * 100;
-            document.getElementById("timer-progress").style.width = `${percentage}%`;
+            if (emptyText) emptyText.classList.add("hidden");
+            logList.classList.remove("hidden");
+
+            // สร้าง Element แถวบันทึกประวัติใหม่
+            const li = document.createElement("li");
+            li.className = "flex justify-between items-center bg-slate-900 px-3 py-2 rounded-lg border border-slate-800 text-xs animate-fade-in";
+            li.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                    <span class="text-slate-400 font-mono">[${timeStamp}]</span>
+                    <span class="text-slate-200 font-medium">ตรวจพบ: ${highest.className}</span>
+                </div>
+                <span class="text-cyan-400 font-mono font-semibold bg-cyan-500/10 px-2 py-0.5 rounded">${(highest.probability * 100).toFixed(0)}%</span>
+            `;
+            
+            // เพิ่ม Log ใหม่ไว้ด้านบนสุดเพื่อให้เห็นง่าย
+            logList.insertBefore(li, logList.firstChild);
+            
+            // เอฟเฟกต์กระพริบหน้าจอชั่วครู่เพื่อให้รู้ว่ามีการอัปเดตข้อมูลสำคัญทุกๆ 3 นาที
+            document.getElementById("log-container").classList.add("border-indigo-500");
+            setTimeout(() => {
+                document.getElementById("log-container").classList.remove("border-indigo-500");
+            }, 1000);
+            
+            console.log(`[Automated Task Every 3 Mins Triggered] - Captured Class: ${highest.className} (${(highest.probability * 100).toFixed(2)}%)`);
+            
+            // โน้ตเสริมสำหรับนักพัฒนา: คุณสามารถนำโค้ดเชื่อมต่อกับ API หรือยิงค่าผลลัพธ์นี้ขึ้นหลังบ้าน (Database / Line Notify) ได้ที่นี่เลยครับ
         }
     </script>
 </body>
